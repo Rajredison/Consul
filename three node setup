@@ -1,0 +1,102 @@
+******Setup Consul Cluster *******
+
+Key features of Consul ( source: Consul site)
+Service Discovery: Clients register services and other applications can use Consul to discover services using DNS or HTTP.
+Secure Service Communication: Consul can generate and distribute TLS certificates for services to establish mutual TLS connections.
+KV Store:  The Consul’s hierarchical key/value store can be used for dynamic configuration, coordination, leader election, feature flagging, and more. It has a simple and easy to use HTTP API.
+Health Checking: Consul clients do health checks, both for services (If OK) and for the local node (e.g resource utilization). This information is helpful to monitor cluster health and routing of traffic away from unhealthy nodes.
+Multi-Datacenter: Consul supports multiple data centers out of the box.
+
+########Consul Architecture#######
+Every node that provides services to Consul runs a Consul agent which is responsible for health checking the services on the node as well as the node itself. Consul agents talk to one or more Consul servers which store and replicate data. Consul servers themselves elect a leader.
+
+######Consul cluster Setup ########
+
+step 1. Install Consul on all the three nodes
+        # cd /usr/local/bin
+        #wget https://releases.hashicorp.com/consul/1.6.3/consul_1.6.3_linux_amd64.zip
+        #uzip consul_1.6.3_linux_amd64.zip
+        #rm *.zip
+
+Step 2. Bootstrap and start Consul Cluster   
+        #groupadd --system consul
+        #useradd -s /sbin/nologin --system -g consul consul
+        ---Create consul data directory and set ownership to consul user-
+        #mkdir -p /var/consul/data
+        #chown -R consul:consul /var/consul/data
+        #chmod -R 775 /var/consul/data
+        ---Create Consul configurations directory---
+        #mkdir /etc/consul.d
+        #chown -R consul:consul /etc/consul.d
+        -----edit /etc/hosts file to configure hostnames for all servers---
+
+Step 3  Create a systemd service file /etc/systemd/system/consul.service and add
+        #vi /etc/systemd/system/consul.service
+        [Unit]
+		Description=Consul Service Discovery Agent
+		Documentation=https://www.consul.io/
+		After=network-online.target
+		Wants=network-online.target
+
+		[Service]
+		Type=simple
+		User=consul
+		Group=consul
+		ExecStart=/usr/local/bin/consul agent \
+        		-node=195.168.4.4 \
+        		-config-dir=/etc/consul.d
+
+		ExecReload=/bin/kill -HUP $MAINPID
+		KillSignal=SIGINT
+		TimeoutStopSec=5
+		Restart=on-failure
+		SyslogIdentifier=consul
+
+		[Install]
+		WantedBy=multi-user.target
+
+Step 4 Generate Consul secret
+       #consul keygen
+Step 5. create a json configuration file & value of encrypt with your generated secret
+        #vi /etc/consul.d/config.json
+        {
+    	"advertise_addr": "195.168.4.4",
+    	"bind_addr": "195.168.4.4",
+    	"bootstrap_expect": 3,
+    	"client_addr": "0.0.0.0",
+    	"datacenter": "ENT",
+    	"data_dir": "/var/consul/data",
+    	"domain": "ent.jpe3.local",
+    	"enable_script_checks": true,
+    	"dns_config": {
+        "enable_truncate": true,
+        "only_passing": true
+    	},
+    	"enable_syslog": true,
+    	"encrypt": "Yp+CN/Hg9gbkLJx2PGmDhuQS/qf9cICMqXcb9Sq9MaI=",
+    	"leave_on_terminate": true,
+    	"log_level": "INFO",
+    	"rejoin_after_leave": true,
+    	"retry_join": [
+    	 "195.168.4.3",
+    	 "195.168.4.4",
+    	 "195.168.4.5"
+    	],
+    	"server": true,
+    	"start_join": [
+        "195.168.4.3",
+        "195.168.4.4",
+        "195.168.4.5"
+    	],
+    	"ui": true
+	}
+Step 6.
+      Start consul service on all nodes
+      #systemctl start consul
+      #systemctl enable consul
+      #consul members
+
+
+  URL:https://computingforgeeks.com/how-to-install-consul-cluster-18-04-lts/           		
+
+
