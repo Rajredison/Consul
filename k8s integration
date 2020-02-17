@@ -1,0 +1,12 @@
+####Add below entry in coredns configmap file...
+
+service.ent.x.internal.:53 {
+        errors
+        cache 30
+        log
+        reload
+        forward . x.x.x.x:53 x.x.x.x:53 x.x.x.x:53 {
+          policy round_robin
+          force_tcp
+          prefer_udp
+        }
